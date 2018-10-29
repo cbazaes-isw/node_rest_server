@@ -1,9 +1,34 @@
 const express = require('express');
+const bcrypt = require('bcrypt');
+const _ = require('underscore');
 const Usuario = require('../models/usuario');
 const app = express();
 
 app.get('/usuario', function(rq, rs) {
-    rs.json('get usuario DESARROLLO');
+
+    let pag_desde = Number(rq.query.desde) || 0;
+    let limite = Number(rq.query.limite) || 5;
+
+    let filtro = { estado: true };
+
+    Usuario
+        .find(filtro, 'nombre email google role estado img')
+        .skip(pag_desde)
+        .limit(limite)
+        .exec((err, usuarios) => {
+            if (err) return rs.status(400).json({ ok: false, err });
+
+            Usuario.count(filtro, (err, cantidad) => {
+
+                rs.json({
+                    ok: true,
+                    cantidad,
+                    usuarios
+                });
+
+            });
+
+        });
 });
 
 app.post('/usuario', function(rq, rs) {
@@ -12,7 +37,7 @@ app.post('/usuario', function(rq, rs) {
     let usuario = new Usuario({
         nombre: body.nombre,
         email: body.email,
-        password: body.password,
+        password: bcrypt.hashSync(body.password, 10),
         role: body.role
     });
 
@@ -25,15 +50,56 @@ app.post('/usuario', function(rq, rs) {
 });
 
 app.put('/usuario/:id', function(rq, rs) {
+
     let id = rq.params.id;
-    rs.json({
-        id,
-        action: `put usuario`
+    let body = _.pick(rq.body, ['nombre', 'email', 'img', 'role', 'estado']);
+
+    Usuario.findByIdAndUpdate(id, body, { new: true, runValidators: true }, (err, usuario_db) => {
+
+        if (err) return rs.status(400).json({ ok: false, err });
+
+        rs.json({
+            ok: true,
+            usuario: usuario_db
+        });
     });
+
 });
 
-app.delete('/usuario', function(rq, rs) {
-    rs.json('delete usuario');
+app.delete('/usuario/:id', function(rq, rs) {
+
+    let id = rq.params.id;
+    let body = _.pick(rq.body, ['nombre', 'email', 'img', 'role', 'estado']);
+
+    o = { estado: false };
+
+    Usuario.findByIdAndUpdate(id, o, { new: true }, (err, usuario_db) => {
+
+        if (err) return rs.status(400).json({ ok: false, err });
+
+        if (!usuario_db) return rs.status(400).json({ ok: false, err: { message: 'Usuario no encontrado' } });
+
+        rs.json({
+            ok: true,
+            usuario: usuario_db
+        });
+    });
+
+    // let id = rq.params.id;
+
+    // Usuario.findByIdAndRemove(id, (err, usuario_eliminado) => {
+
+    //     if (err) return rs.status(400).json({ ok: false, err });
+
+    //     if (!usuario_eliminado) return rs.status(400).json({ ok: false, err: { message: 'Usuario no encontrado' } });
+
+    //     rs.json({
+    //         ok: true,
+    //         usuario: usuario_eliminado
+    //     });
+
+    // });
+
 });
 
 module.exports = app;
