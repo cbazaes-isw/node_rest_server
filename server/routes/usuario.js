@@ -2,12 +2,14 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const _ = require('underscore');
 const Usuario = require('../models/usuario');
+const { verifica_token, verifica_admin } = require('../middlewares/authorization');
+
 const app = express();
 
-app.get('/usuario', function(rq, rs) {
+app.get('/usuario', verifica_token, (request, response) => {
 
-    let pag_desde = Number(rq.query.desde) || 0;
-    let limite = Number(rq.query.limite) || 5;
+    let pag_desde = Number(request.query.desde) || 0;
+    let limite = Number(request.query.limite) || 5;
 
     let filtro = { estado: true };
 
@@ -16,11 +18,11 @@ app.get('/usuario', function(rq, rs) {
         .skip(pag_desde)
         .limit(limite)
         .exec((err, usuarios) => {
-            if (err) return rs.status(400).json({ ok: false, err });
+            if (err) return response.status(400).json({ ok: false, err });
 
             Usuario.count(filtro, (err, cantidad) => {
 
-                rs.json({
+                response.json({
                     ok: true,
                     cantidad,
                     usuarios
@@ -31,8 +33,8 @@ app.get('/usuario', function(rq, rs) {
         });
 });
 
-app.post('/usuario', function(rq, rs) {
-    let body = rq.body;
+app.post('/usuario', [verifica_token, verifica_admin], (request, response) => {
+    let body = request.body;
 
     let usuario = new Usuario({
         nombre: body.nombre,
@@ -42,23 +44,23 @@ app.post('/usuario', function(rq, rs) {
     });
 
     usuario.save((err, usuario_db) => {
-        if (err) return rs.status(400).json({ ok: false, err });
+        if (err) return response.status(400).json({ ok: false, err });
 
-        rs.json({ ok: true, usuario: usuario_db });
+        response.json({ ok: true, usuario: usuario_db });
     });
 
 });
 
-app.put('/usuario/:id', function(rq, rs) {
+app.put('/usuario/:id', [verifica_token, verifica_admin], (request, response) => {
 
-    let id = rq.params.id;
-    let body = _.pick(rq.body, ['nombre', 'email', 'img', 'role', 'estado']);
+    let id = request.params.id;
+    let body = _.pick(request.body, ['nombre', 'email', 'img', 'role', 'estado']);
 
     Usuario.findByIdAndUpdate(id, body, { new: true, runValidators: true }, (err, usuario_db) => {
 
-        if (err) return rs.status(400).json({ ok: false, err });
+        if (err) return response.status(400).json({ ok: false, err });
 
-        rs.json({
+        response.json({
             ok: true,
             usuario: usuario_db
         });
@@ -66,20 +68,20 @@ app.put('/usuario/:id', function(rq, rs) {
 
 });
 
-app.delete('/usuario/:id', function(rq, rs) {
+app.delete('/usuario/:id', [verifica_token, verifica_admin], (request, response) => {
 
-    let id = rq.params.id;
-    let body = _.pick(rq.body, ['nombre', 'email', 'img', 'role', 'estado']);
+    let id = request.params.id;
+    let body = _.pick(request.body, ['nombre', 'email', 'img', 'role', 'estado']);
 
     o = { estado: false };
 
     Usuario.findByIdAndUpdate(id, o, { new: true }, (err, usuario_db) => {
 
-        if (err) return rs.status(400).json({ ok: false, err });
+        if (err) return response.status(400).json({ ok: false, err });
 
-        if (!usuario_db) return rs.status(400).json({ ok: false, err: { message: 'Usuario no encontrado' } });
+        if (!usuario_db) return response.status(400).json({ ok: false, err: { message: 'Usuario no encontrado' } });
 
-        rs.json({
+        response.json({
             ok: true,
             usuario: usuario_db
         });
