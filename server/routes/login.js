@@ -58,7 +58,7 @@ async function verify(token) {
 
 app.post('/google', async(request, response) => {
 
-    let token = request.body.idtoken;
+    let token = request.body.token;
 
     let google_user = await verify(token)
         .catch(err => response.status(403).json({ ok: false, err }));
@@ -67,7 +67,7 @@ app.post('/google', async(request, response) => {
         if (err) return response.status(500).json({ ok: false, err });
 
         if (usuario_db) {
-            if (!usuario_db.google) {
+            if (usuario_db.google === false) {
                 return response.status(400).json({ ok: false, err: { message: 'Debe usar su autenticación normal' } });
             } else {
                 let token = jwt.sign({
@@ -83,13 +83,14 @@ app.post('/google', async(request, response) => {
         } else {
 
             let usuario = new Usuario();
+
             usuario.nombre = google_user.nombre;
             usuario.email = google_user.email;
             usuario.img = google_user.img;
             usuario.google = true;
             usuario.password = ':)';
 
-            usuario.save((err, usuario) => {
+            usuario.save((err, usuario_db) => {
 
                 if (err) return response.status(500).json({ ok: false, err });
 
@@ -107,8 +108,6 @@ app.post('/google', async(request, response) => {
 
         }
     });
-
-    response.json({ usuario: google_user });
 
 });
 
