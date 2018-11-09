@@ -71,7 +71,6 @@ app.put('/usuario/:id', [verifica_token, verifica_admin], (request, response) =>
 app.delete('/usuario/:id', [verifica_token, verifica_admin], (request, response) => {
 
     let id = request.params.id;
-    let body = _.pick(request.body, ['nombre', 'email', 'img', 'role', 'estado']);
 
     o = { estado: false };
 
